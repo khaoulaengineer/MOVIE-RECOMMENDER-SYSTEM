@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Environnements
+venv/
+env/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (optionnel - si fichiers trop gros)
+*.zip
+ml-100k/
+
+# IDE
+.vscode/
+.idea/
