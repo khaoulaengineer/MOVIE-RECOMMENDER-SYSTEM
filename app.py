@@ -155,7 +155,7 @@ if recommend_button:
 with st.sidebar:
     st.markdown("### 👨‍💻 À propos")
     st.markdown("""
-    **Créé par :** [Ton Nom]
+    **Créé par :** KHAOULA LOUGMI
     
     **Technologies :**
     - Python 🐍
@@ -172,6 +172,7 @@ st.markdown("---")
 st.markdown("""
     <div style='text-align: center; color: #999; padding: 20px;'>
         <p>🎬 Movie Recommender System | Créé avec ❤️ et Python</p>
-        <p>Projet d'Ingénierie des Données - 2025</p>
+        <p>Projet d'Ingénierie des Données - 2026</p>
     </div>
 """, unsafe_allow_html=True)
+
