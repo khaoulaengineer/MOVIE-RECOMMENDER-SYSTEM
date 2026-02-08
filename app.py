@@ -35,23 +35,53 @@ def load_data():
     movies = pd.read_csv('movies_list.csv')
     return similarity_matrix, movies
 
-similarity_matrix, movies = load_data()
+try:
+    similarity_matrix, movies = load_data()
+    st.success(f"✅ {len(movies)} films chargés avec succès !")
+except Exception as e:
+    st.error(f"❌ Erreur de chargement : {str(e)}")
+    st.stop()
 
 def get_recommendations(movie_title, n_recommendations=10):
-    movie_matches = movies[movies['title'].str.lower().str.contains(movie_title.lower(), na=False)]
-    if movie_matches.empty:
+    # Debug : afficher ce qu'on cherche
+    st.write(f"🔍 Recherche de : '{movie_title}'")
+    
+    # Recherche exacte
+    exact_match = movies[movies['title'] == movie_title]
+    
+    if exact_match.empty:
+        st.warning(f"⚠️ Film '{movie_title}' non trouvé exactement")
+        # Essayer une recherche partielle
+        partial_match = movies[movies['title'].str.contains(movie_title, case=False, na=False)]
+        if not partial_match.empty:
+            st.info(f"Films similaires trouvés : {partial_match['title'].tolist()[:5]}")
         return None
-    movie_id = movie_matches.iloc[0]['movie_id']
-    movie_name = movie_matches.iloc[0]['title']
+    
+    movie_id = exact_match.iloc[0]['movie_id']
+    movie_name = exact_match.iloc[0]['title']
+    
+    st.write(f"✅ Film trouvé : {movie_name} (ID: {movie_id})")
+    
+    # Vérifie si dans la matrice
     if movie_id not in similarity_matrix.columns:
+        st.error(f"❌ Film ID {movie_id} pas dans la matrice de similarité")
+        st.write(f"IDs disponibles : {list(similarity_matrix.columns)[:10]}...")
         return None
+    
+    st.write(f"✅ Film dans la matrice de similarité")
+    
+    # Calcul des recommandations
     similar_scores = similarity_matrix[movie_id].sort_values(ascending=False)
     similar_scores = similar_scores[similar_scores.index != movie_id]
     top_similar = similar_scores.head(n_recommendations)
+    
+    st.write(f"✅ {len(top_similar)} recommandations trouvées")
+    
     recommendations = pd.DataFrame({
         'movie_id': top_similar.index,
         'similarity_score': top_similar.values
     })
+    
     recommendations = pd.merge(recommendations, movies[['movie_id', 'title']], on='movie_id')
     return recommendations, movie_name
 
@@ -67,6 +97,12 @@ with col2:
     st.metric("Algorithme", "Collaborative Filtering")
     st.markdown("---")
     st.info("1. Sélectionne un film\n2. Clique sur 'Recommander'\n3. Découvre des films similaires !")
+    
+    # Debug info
+    with st.expander("🔧 Debug Info"):
+        st.write(f"Colonnes movies : {movies.columns.tolist()}")
+        st.write(f"Premiers films : {movies['title'].head().tolist()}")
+        st.write(f"Matrice shape : {similarity_matrix.shape}")
 
 with col1:
     st.markdown("### 🔍 Recherche de film")
@@ -79,38 +115,42 @@ if recommend_button:
     if selected_movie == "":
         st.warning("⚠️ Veuillez sélectionner un film d'abord !")
     else:
-        with st.spinner("🔄 Recherche de films similaires..."):
-            result = get_recommendations(selected_movie, n_recs)
-            if result is None:
-                st.error(f"❌ Aucune recommandation trouvée pour '{selected_movie}'")
-            else:
-                recommendations, actual_movie_name = result
-                st.markdown("---")
-                st.markdown(f"<h2 style='text-align: center; color: #E50914;'>🎬 Si vous aimez '{actual_movie_name}'...</h2>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; color: #666;'>Vous aimerez aussi ces {len(recommendations)} films :</p>", unsafe_allow_html=True)
-                st.markdown("")
-                
-                for idx, row in recommendations.iterrows():
-                    col_a, col_b = st.columns([4, 1])
-                    with col_a:
-                        st.markdown(f'''
-                            <div class="movie-card">
-                                <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 0.5rem;">
-                                    {idx + 1}. {row['title']}
-                                </div>
-                                <div style="color: #666;">
-                                    💯 Score de similarité : {row['similarity_score']:.1%}
-                                </div>
+        st.markdown("---")
+        st.markdown("### 🔍 Processus de recherche")
+        
+        result = get_recommendations(selected_movie, n_recs)
+        
+        if result is None:
+            st.error(f"❌ Impossible de générer des recommandations pour '{selected_movie}'")
+        else:
+            recommendations, actual_movie_name = result
+            
+            st.markdown("---")
+            st.markdown(f"<h2 style='text-align: center; color: #E50914;'>🎬 Si vous aimez '{actual_movie_name}'...</h2>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: #666;'>Vous aimerez aussi ces {len(recommendations)} films :</p>", unsafe_allow_html=True)
+            st.markdown("")
+            
+            for idx, row in recommendations.iterrows():
+                col_a, col_b = st.columns([4, 1])
+                with col_a:
+                    st.markdown(f'''
+                        <div class="movie-card">
+                            <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 0.5rem;">
+                                {idx + 1}. {row['title']}
                             </div>
-                        ''', unsafe_allow_html=True)
-                    with col_b:
-                        st.write("")
-                        st.write("")
-                        st.progress(float(row['similarity_score']))
-                
-                st.success(f"✅ {len(recommendations)} films recommandés avec succès !")
-                avg_similarity = recommendations['similarity_score'].mean()
-                st.info(f"📊 Score de similarité moyen : {avg_similarity:.1%}")
+                            <div style="color: #666;">
+                                💯 Score de similarité : {row['similarity_score']:.1%}
+                            </div>
+                        </div>
+                    ''', unsafe_allow_html=True)
+                with col_b:
+                    st.write("")
+                    st.write("")
+                    st.progress(float(row['similarity_score']))
+            
+            st.success(f"✅ {len(recommendations)} films recommandés avec succès !")
+            avg_similarity = recommendations['similarity_score'].mean()
+            st.info(f"📊 Score de similarité moyen : {avg_similarity:.1%}")
 
 with st.sidebar:
     st.markdown("### 👨‍💻 À propos")
